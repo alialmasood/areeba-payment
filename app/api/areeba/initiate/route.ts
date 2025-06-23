@@ -19,13 +19,13 @@ export async function POST(req: NextRequest) {
       language,
     } = body;
 
-    const merchantTransactionId = `TXN-${Date.now()}`;
+    if (!amount || !currency || !customerFirstName || !customerEmail) {
+      return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
+    }
 
+    const merchantTransactionId = `TXN-${Date.now()}`;
     const payloadToHash = `${merchantId}${merchantTransactionId}${amount}${currency}`;
-    const hmac = crypto
-      .createHmac('sha256', apiKey)
-      .update(payloadToHash)
-      .digest('hex');
+    const hmac = crypto.createHmac('sha256', apiKey).update(payloadToHash).digest('hex');
 
     const payload = {
       merchantId,
@@ -38,18 +38,16 @@ export async function POST(req: NextRequest) {
       customerLastName,
       customerEmail,
       customerPhone: '0000000000',
-      customerIp: customerIpAddress,
-      language,
+      customerIp: customerIpAddress || '127.0.0.1',
+      language: language || 'en',
       signature: hmac,
     };
 
-    console.log('Payload being sent to Areeba:', payload);
+    console.log('Request Payload:', payload);
 
     const res = await fetch(apiUrl, {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(payload),
     });
 
@@ -58,17 +56,12 @@ export async function POST(req: NextRequest) {
     if (data?.paymentUrl) {
       return NextResponse.json({ redirectUrl: data.paymentUrl });
     } else {
-      console.error('Areeba API Response Error:', data);
-      return NextResponse.json(
-        { error: 'فشل في توليد رابط الدفع', details: data },
-        { status: 500 }
-      );
+      console.error('Areeba Error Response:', data);
+      return NextResponse.json({ error: 'فشل في توليد رابط الدفع', details: data }, { status: 500 });
     }
+
   } catch (error) {
     console.error('Server error:', error);
-    return NextResponse.json(
-      { error: 'حدث خطأ في الخادم أثناء بدء عملية الدفع' },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: 'حدث خطأ في الخادم أثناء بدء عملية الدفع' }, { status: 500 });
   }
 }
