@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import crypto from 'crypto';
 
-// تحميل المتغيرات من البيئة
+// ✅ قراءة المتغيرات من .env
 const merchantId = process.env.merchantId!;
 const apiKey = process.env.apiKey!;
 const apiUrl = process.env.apiUrl!;
@@ -15,67 +15,62 @@ export async function POST(req: NextRequest) {
     const {
       amount,
       currency,
-      customerFirstName = "Ali",
-      customerLastName = "Masood",
-      customerEmail = "ali@example.com",
-      customerIpAddress = "127.0.0.1",
-      language = "ar",
+      customerFirstName,
+      customerLastName,
+      customerEmail,
+      customerIpAddress,
+      language,
     } = body;
 
+    // ✅ تحقق من البيانات الأساسية
     if (!amount || !currency || !customerFirstName || !customerEmail) {
       return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
     }
 
-    // توليد رقم معاملة فريد
     const merchantTransactionId = `TXN-${Date.now()}`;
+    const payloadToHash = `${merchantId}${merchantTransactionId}${amount}${currency}`;
+    const hmac = crypto.createHmac('sha256', apiKey).update(payloadToHash).digest('hex');
 
-    // إنشاء التوقيع باستخدام HMAC SHA256
-    const stringToSign = `${merchantId}${merchantTransactionId}${amount}${currency}`;
-    const signature = crypto.createHmac('sha256', apiKey).update(stringToSign).digest('hex');
-
-    // تجهيز بيانات الطلب
+    // ✅ تجهيز Payload
     const payload = {
       merchantId,
       merchantTransactionId,
       amount,
       currency,
-      returnUrl: 'https://areeba-payment-iyjp.vercel.app/product',
-      cancelUrl: 'https://areeba-payment-iyjp.vercel.app/product',
+      returnUrl: `${process.env.NEXT_PUBLIC_BASE_URL}/product`,
+      cancelUrl: `${process.env.NEXT_PUBLIC_BASE_URL}/product`,
       customerFirstName,
       customerLastName,
       customerEmail,
       customerPhone: '0000000000',
-      customerIp: customerIpAddress,
-      language,
-      signature,
+      customerIp: customerIpAddress || '127.0.0.1',
+      language: language || 'en',
+      signature: hmac,
     };
 
-    console.log('🔵 Request Payload:\n', payload);
+    // ✅ تحويل اسم المستخدم وكلمة المرور إلى base64
+    const credentials = Buffer.from(`${apiUser}:${apiPass}`).toString('base64');
 
-    // إنشاء Basic Auth
-    const base64Credentials = Buffer.from(`${apiUser}:${apiPass}`).toString('base64');
-
-    // إرسال الطلب إلى Areeba
+    // ✅ إرسال الطلب إلى Areeba
     const res = await fetch(apiUrl, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': `Basic ${base64Credentials}`,
+        'Authorization': `Basic ${credentials}`,
       },
       body: JSON.stringify(payload),
     });
 
     const data = await res.json();
-    console.log('🟢 Areeba Response:\n', data);
 
     if (data?.paymentUrl) {
       return NextResponse.json({ redirectUrl: data.paymentUrl });
     } else {
+      console.error('Areeba API Response Error:', data);
       return NextResponse.json({ error: 'فشل في توليد رابط الدفع', details: data }, { status: 500 });
     }
-
-  } catch (error: any) {
-    console.error('❌ Server error:', error);
-    return NextResponse.json({ error: 'حدث خطأ في الخادم أثناء بدء عملية الدفع' }, { status: 500 });
+  } catch (error) {
+    console.error('Server error:', error);
+    return NextResponse.json({ error: 'خطأ في الخادم أثناء بدء الدفع' }, { status: 500 });
   }
 }
