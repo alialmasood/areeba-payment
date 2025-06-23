@@ -43,7 +43,8 @@ export async function POST(req: NextRequest) {
       signature: hmac,
     };
 
-    console.log('Request Payload:', payload);
+    // طباعة مفصلة للبيانات المرسلة
+    console.log('🔵 Request Payload:\n', JSON.stringify(payload, null, 2));
 
     const res = await fetch(apiUrl, {
       method: 'POST',
@@ -53,15 +54,18 @@ export async function POST(req: NextRequest) {
 
     const data = await res.json();
 
+    // طباعة مفصلة للرد من Areeba
+    console.log('🟡 Areeba API Response:\n', JSON.stringify(data, null, 2));
+
     if (data?.paymentUrl) {
       return NextResponse.json({ redirectUrl: data.paymentUrl });
     } else {
-      console.error('Areeba Error Response:', data);
+      console.error('🔴 Areeba Error Response:', data);
       return NextResponse.json({ error: 'فشل في توليد رابط الدفع', details: data }, { status: 500 });
     }
 
   } catch (error) {
-    console.error('Server error:', error);
+    console.error('🔴 Server error:', error);
     return NextResponse.json({ error: 'حدث خطأ في الخادم أثناء بدء عملية الدفع' }, { status: 500 });
   }
 }
