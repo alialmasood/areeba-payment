@@ -73,5 +73,27 @@ export async function POST(req: NextRequest) {
       { error: 'حدث خطأ في الخادم أثناء بدء عملية الدفع' },
       { status: 500 }
     );
+    try {
+      // طلب Areeba
+      const res = await fetch(apiUrl, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(payload),
+      });
+    
+      const data = await res.json();
+    
+      if (!res.ok) {
+        console.error('Areeba API Response Error:', data); // <-- السطر المهم
+        return NextResponse.json({ error: 'Failed to create payment link' }, { status: 500 });
+      }
+    
+      return NextResponse.json(data);
+    } catch (error) {
+      console.error('Unexpected error:', error); // <-- طباعة الخطأ المفاجئ
+      return NextResponse.json({ error: 'Something went wrong' }, { status: 500 });
+    }    
   }
 }
