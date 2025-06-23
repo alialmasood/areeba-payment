@@ -1,6 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
 import crypto from 'crypto';
 
+const merchantId = process.env.merchantId!;
+const apiKey = process.env.apiKey!;
+const apiUrl = process.env.apiUrl!;
+
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
@@ -15,14 +19,8 @@ export async function POST(req: NextRequest) {
       language,
     } = body;
 
-    const merchantId = process.env.merchantId!;
-    const apiKey = process.env.apiKey!;
-    const apiUrl = process.env.apiUrl!;
-
-    // إنشاء معرف فريد للمعاملة
     const merchantTransactionId = `TXN-${Date.now()}`;
 
-    // توقيع HMAC
     const payloadToHash = `${merchantId}${merchantTransactionId}${amount}${currency}`;
     const hmac = crypto
       .createHmac('sha256', apiKey)
@@ -45,7 +43,7 @@ export async function POST(req: NextRequest) {
       signature: hmac,
     };
 
-    console.log('🔄 Sending payload to Areeba:', payload);
+    console.log('Payload being sent to Areeba:', payload);
 
     const res = await fetch(apiUrl, {
       method: 'POST',
@@ -57,14 +55,20 @@ export async function POST(req: NextRequest) {
 
     const data = await res.json();
 
-    if (res.ok && data?.paymentUrl) {
+    if (data?.paymentUrl) {
       return NextResponse.json({ redirectUrl: data.paymentUrl });
     } else {
-      console.error('❌ Areeba API error:', data);
-      return NextResponse.json({ error: 'فشل في إنشاء رابط الدفع', details: data }, { status: 500 });
+      console.error('Areeba API Response Error:', data);
+      return NextResponse.json(
+        { error: 'فشل في توليد رابط الدفع', details: data },
+        { status: 500 }
+      );
     }
   } catch (error) {
-    console.error('🔥 Unexpected server error:', error);
-    return NextResponse.json({ error: 'خطأ غير متوقع في الخادم' }, { status: 500 });
+    console.error('Server error:', error);
+    return NextResponse.json(
+      { error: 'حدث خطأ في الخادم أثناء بدء عملية الدفع' },
+      { status: 500 }
+    );
   }
 }
