@@ -1,76 +1,58 @@
 import { NextRequest, NextResponse } from 'next/server';
-import crypto from 'crypto';
 
-// ✅ قراءة المتغيرات من .env
 const merchantId = process.env.merchantId!;
 const apiKey = process.env.apiKey!;
 const apiUrl = process.env.apiUrl!;
-const apiUser = process.env.apiUser!;
-const apiPass = process.env.apiPass!;
+const baseUrl = process.env.NEXT_PUBLIC_BASE_URL!;
 
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
-
     const {
       amount,
-      currency,
-      customerFirstName,
-      customerLastName,
-      customerEmail,
-      customerIpAddress,
-      language,
+      currency = 'USD',
+      customerFirstName = 'Ali',
+      customerLastName = 'Masood',
+      customerEmail = 'test@example.com',
+      language = 'en',
     } = body;
 
-    // ✅ تحقق من البيانات الأساسية
-    if (!amount || !currency || !customerFirstName || !customerEmail) {
-      return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
-    }
-
     const merchantTransactionId = `TXN-${Date.now()}`;
-    const payloadToHash = `${merchantId}${merchantTransactionId}${amount}${currency}`;
-    const hmac = crypto.createHmac('sha256', apiKey).update(payloadToHash).digest('hex');
 
-    // ✅ تجهيز Payload
-    const payload = {
-      merchantId,
-      merchantTransactionId,
-      amount,
+    const form = new URLSearchParams({
+      entityId: merchantId,
+      amount: amount || '1.00',
       currency,
-      returnUrl: `${process.env.NEXT_PUBLIC_BASE_URL}/product`,
-      cancelUrl: `${process.env.NEXT_PUBLIC_BASE_URL}/product`,
-      customerFirstName,
-      customerLastName,
-      customerEmail,
-      customerPhone: '0000000000',
-      customerIp: customerIpAddress || '127.0.0.1',
-      language: language || 'en',
-      signature: hmac,
-    };
+      paymentType: 'DB',
+      customer: {
+        givenName: customerFirstName,
+        surname: customerLastName,
+        email: customerEmail,
+      },
+      merchantTransactionId,
+      shopperResultUrl: baseUrl,
+    } as any);
 
-    // ✅ تحويل اسم المستخدم وكلمة المرور إلى base64
-    const credentials = Buffer.from(`${apiUser}:${apiPass}`).toString('base64');
-
-    // ✅ إرسال الطلب إلى Areeba
-    const res = await fetch(apiUrl, {
+    const response = await fetch(apiUrl, {
       method: 'POST',
       headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Basic ${credentials}`,
+        'Authorization': `Bearer ${apiKey}`,
+        'Content-Type': 'application/x-www-form-urlencoded',
       },
-      body: JSON.stringify(payload),
+      body: form.toString(),
     });
 
-    const data = await res.json();
+    const data = await response.json();
 
-    if (data?.paymentUrl) {
-      return NextResponse.json({ redirectUrl: data.paymentUrl });
+    if (data?.id) {
+      const paymentUrl = `https://test.oppwa.com/v1/paymentWidgets.js?checkoutId=${data.id}`;
+      return NextResponse.json({ redirectUrl: paymentUrl });
     } else {
-      console.error('Areeba API Response Error:', data);
-      return NextResponse.json({ error: 'فشل في توليد رابط الدفع', details: data }, { status: 500 });
+      console.error('Areeba response error:', data);
+      return NextResponse.json({ error: 'فشل إنشاء الدفع', details: data }, { status: 500 });
     }
   } catch (error) {
     console.error('Server error:', error);
-    return NextResponse.json({ error: 'خطأ في الخادم أثناء بدء الدفع' }, { status: 500 });
+    return NextResponse.json({ error: 'خطأ في الخادم' }, { status: 500 });
   }
 }
