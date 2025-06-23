@@ -7,35 +7,17 @@ export default function ProductPage() {
   const handleBuyNow = async () => {
     setLoading(true);
 
-    const payload = {
-      merchantTransactionId: 'TXN-' + Date.now(), // معرف فريد للمعاملة
-      amount: '1.00',
-      currency: 'USD',
-      customerFirstName: 'Ali',
-      customerLastName: 'Unido',
-      customerEmail: 'test@example.com',
-      customerIpAddress: '127.0.0.1',
-      language: 'AR',
-    };
+    const res = await fetch('/api/areeba/initiate', {
+      method: 'POST',
+    });
 
-    try {
-      const res = await fetch('/api/areeba/initiate', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(payload),
-      });
+    const data = await res.json();
 
-      const data = await res.json();
-
-      if (data.redirectUrl) {
-        window.location.href = data.redirectUrl;
-      } else {
-        console.log('Received response (no redirect expected in test):', data);
-        alert('تم إرسال البيانات بنجاح (هذا رد تجريبي فقط)');
-      }
-      
+    if (data.redirectUrl) {
+      window.location.href = data.redirectUrl;
+    } else {
+      alert('فشل في إنشاء رابط الدفع');
+    }
 
     setLoading(false);
   };
