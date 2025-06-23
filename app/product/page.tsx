@@ -15,6 +15,12 @@ export default function ProductPage() {
         },
         body: JSON.stringify({
           amount: "1.00",
+          currency: "USD",
+          customerFirstName: "Ali",
+          customerLastName: "Masood",
+          customerEmail: "ali@example.com",
+          customerIpAddress: "192.168.1.1", // أو اجعلها ثابتة مؤقتًا
+          language: "ar",
         }),
       });
 
@@ -23,6 +29,7 @@ export default function ProductPage() {
         window.location.href = data.redirectUrl;
       } else {
         alert("فشل إنشاء رابط الدفع");
+        console.error("Areeba API Error:", data);
       }
     } catch (error) {
       console.error("Areeba Error:", error);
