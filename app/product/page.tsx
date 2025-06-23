@@ -26,7 +26,7 @@ export default function ProductPage() {
 
       const data = await res.json();
       if (data.redirectUrl) {
-        window.location.href = data.redirectUrl;
+        window.location.href = `/payment?checkoutId=${data.redirectUrl.split('checkoutId=')[1]}`;
       } else {
         alert("فشل إنشاء رابط الدفع");
         console.error("Areeba API Error:", data);
