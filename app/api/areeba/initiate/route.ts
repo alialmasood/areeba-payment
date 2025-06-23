@@ -36,16 +36,17 @@ export async function POST(req: NextRequest) {
       merchantTransactionId,
       amount,
       currency,
-      returnUrl: 'http://localhost:3000/product', // عدّل لاحقًا حسب موقعك
-      cancelUrl: 'http://localhost:3000/product',
+      returnUrl: 'https://areeba-payment-iyjp.vercel.app/product',
+      cancelUrl: 'https://areeba-payment-iyjp.vercel.app/product',
       customerFirstName,
       customerLastName,
       customerEmail,
-      customerPhone: '0000000000', // يمكنك تخصيصه لاحقًا
+      customerPhone: '0000000000',
       customerIp: customerIpAddress,
       language,
-      signature: hmac,
+      signature: hmac
     };
+    
     console.log('Payload being sent to Areeba:', payload);
     const res = await fetch(apiUrl, {
       method: 'POST',
